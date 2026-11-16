@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0b111d"><title>Sign in · BatchWatch</title><link rel="stylesheet" href="/static/styles.css"></head>
+<body class="login-page"><div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<div class="login-card"><div class="login-logo"><span class="brandmark">◈</span><div><strong>Batch<span class="brand-accent">Watch.</span></strong><small>ICAI MONITORING</small></div></div>
+<div class="eyebrow">PRIVATE ACCESS</div><h1>Welcome back<span class="period">.</span></h1><p>Your Nashik batch monitor is just a password away.</p>
+<form id="login-form"><label for="password">DASHBOARD PASSWORD</label><input id="password" type="password" placeholder="Enter your password" autocomplete="current-password" required minlength="12"><button class="primary-button full" type="submit">Access dashboard ↗</button><div class="login-error" id="login-error" role="alert"></div></form>
+<div class="login-bottom">MONITORING WESTERN REGION · POU NASHIK</div></div>
+<script>
+document.getElementById('login-form').addEventListener('submit',async e=>{e.preventDefault(); const error=document.getElementById('login-error');const button=e.target.querySelector('button');error.textContent='';button.disabled=true;try{let r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('password').value})});if(!r.ok)throw Error('Incorrect password. Please try again.');location.href='/';}catch(err){error.textContent=err.message;button.disabled=false;}});
+</script></body></html>

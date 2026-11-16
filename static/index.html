@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b111d" />
+  <meta name="description" content="Private ICAI Nashik batch announcement monitoring dashboard" />
+  <title>ICAI Nashik — Batch Watch</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div id="app" class="shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Batch Watch home">
+        <span class="brandmark"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5v14M4 5h10a5 5 0 0 1 0 10H4M8 10h7"/></svg></span>
+        <span><strong>Batch<span class="brand-accent">Watch.</span></strong><small>ICAI MONITORING</small></span>
+      </a>
+      <div class="nav-label">WORKSPACE</div>
+      <nav class="nav" aria-label="Dashboard navigation">
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">◫</span> Overview</button>
+        <button class="nav-item" data-view="batches"><span class="nav-icon">▤</span> All batches <span id="nav-count" class="nav-count">0</span></button>
+        <button class="nav-item" data-view="activity"><span class="nav-icon">◷</span> Activity log</button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span> Settings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-support">
+          <span class="support-icon">↗</span>
+          <strong>Official ICAI portal</strong>
+          <p>Registration and batch details</p>
+          <a href="https://www.icaionlineregistration.org/launchbatchdetail.aspx" target="_blank" rel="noopener noreferrer">Visit website <span aria-hidden="true">↗</span></a>
+        </div>
+        <button class="signout" id="logout-btn"><span aria-hidden="true">⇥</span> Sign out</button>
+        <div class="sidebar-foot">PRIVATE MONITOR · V2.0</div>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="top-left"><span class="breadcrumb-muted">Workspace</span><span class="slash">/</span><strong id="page-name">Overview</strong></div>
+        <div class="top-right">
+          <span class="clock" id="time-clock">—</span>
+          <div id="top-status" class="status-pill"><span class="status-dot"></span> Loading monitor</div>
+          <span class="avatar" aria-label="Private dashboard">BW</span>
+        </div>
+      </header>
+      <main class="content" id="content">
+        <section id="view-dashboard" class="view active">
+          <div class="intro">
+            <div><div class="eyebrow"><span class="little-star">✦</span> YOUR BATCH INTELLIGENCE CENTER</div>
+              <h1>Stay one step <em>ahead.</em></h1>
+              <p>Instant visibility into every new ICAI batch in Nashik. No more refreshing the portal.</p>
+            </div>
+            <div class="intro-right"><span class="intro-orbit orbit-one"></span><span class="intro-orbit orbit-two"></span><div class="intro-glyph">↗</div></div>
+          </div>
+          <div class="filtersbar">
+            <div class="filter-chip"><span class="chip-icon">⌖</span><span>REGION</span><strong>Western</strong></div>
+            <div class="filter-chip"><span class="chip-icon">◉</span><span>POU</span><strong>Nashik</strong></div>
+            <div class="filter-chip"><span class="chip-icon">▣</span><span>COURSES</span><strong>All courses</strong></div>
+            <div class="filter-chip"><span class="chip-icon">⏱</span><span>INTERVAL</span><strong id="interval-text">5 minutes</strong></div>
+          </div>
+          <section class="stats" aria-label="Monitoring statistics">
+            <article class="stat-card"><div class="stat-header">BATCHES TRACKED <span class="stat-icon blue">▤</span></div><div id="stat-known" class="stat-number">—</div><div class="stat-footer">Unique batches discovered</div></article>
+            <article class="stat-card"><div class="stat-header">NEW DISCOVERIES <span class="stat-icon green">✦</span></div><div id="stat-new" class="stat-number accent">—</div><div class="stat-footer">Since first successful check</div></article>
+            <article class="stat-card"><div class="stat-header">LAST SUCCESSFUL CHECK <span class="stat-icon purple">◷</span></div><div id="stat-last" class="stat-number small">—</div><div class="stat-footer" id="last-check-detail">Waiting for first check</div></article>
+            <article class="stat-card"><div class="stat-header">TELEGRAM ALERTS <span class="stat-icon orange">➤</span></div><div id="stat-telegram" class="stat-number small">—</div><div class="stat-footer" id="telegram-detail">Checking configuration</div></article>
+          </section>
+          <div id="error-banner" class="error-banner" hidden></div>
+          <div class="section-grid">
+            <section class="panel batches-panel">
+              <div class="section-head"><div><div class="tiny-label">REAL-TIME TRACKING</div><h2>Latest batches</h2><p>Announcements captured from the official portal.</p></div><button class="text-link" data-view="batches">View all <span>↗</span></button></div>
+              <div class="table-scroll"><table class="batch-table"><thead><tr><th>COURSE / BATCH</th><th>START DATE</th><th>STATUS</th><th></th></tr></thead><tbody id="latest-batches"></tbody></table></div>
+            </section>
+            <aside class="panel monitor-panel">
+              <div class="section-head compact"><div><div class="tiny-label">AUTOMATED MONITOR</div><h2>Monitor status</h2></div><span class="radio-waves">◉</span></div>
+              <div class="status-block"><span class="status-circle" id="monitor-light"></span><div><strong id="monitor-title">Connecting...</strong><span id="monitor-subtitle">Checking status</span></div></div>
+              <div class="monitor-divider"></div>
+              <div class="monitor-meta"><span>Watching</span><strong>Western • Nashik</strong></div>
+              <div class="monitor-meta"><span>Frequency</span><strong id="monitor-frequency">Every 5 min</strong></div>
+              <div class="monitor-meta"><span>Telegram</span><strong id="monitor-telegram">—</strong></div>
+              <div class="monitor-meta"><span>Last scan</span><strong id="monitor-last">—</strong></div>
+              <button class="primary-button full" id="check-now"><span id="scan-button-icon">↻</span> Check for new batches</button>
+              <button class="outline-button full" id="test-telegram">➤ Send Telegram test</button>
+              <p class="monitor-note">Updates appear here automatically. An always-on cloud server is required for uninterrupted checks.</p>
+            </aside>
+          </div>
+          <section class="panel activity-preview"><div class="section-head"><div><div class="tiny-label">SYSTEM ACTIVITY</div><h2>Recent activity</h2></div><button class="text-link" data-view="activity">Full history ↗</button></div><div id="recent-activity" class="events"></div></section>
+        </section>
+
+        <section id="view-batches" class="view">
+          <div class="page-title"><div><div class="eyebrow">TRACKED RESULTS</div><h1>Batch history<span class="period">.</span></h1><p>Every matching batch observed since monitoring began.</p></div><a class="outline-button button-link" href="https://www.icaionlineregistration.org/launchbatchdetail.aspx" target="_blank" rel="noopener noreferrer">Open official portal ↗</a></div>
+          <div class="panel all-batches-panel"><div class="table-toolbar"><strong id="batch-total-label">All batches</strong><div class="segmented"><button data-filter="all" class="chosen">All</button><button data-filter="new">New</button><button data-filter="active">Currently listed</button></div></div><div class="table-scroll"><table class="batch-table wide"><thead><tr><th>COURSE / BATCH</th><th>START DATE</th><th>END DATE</th><th>FIRST SEEN</th><th>STATUS</th><th></th></tr></thead><tbody id="all-batches"></tbody></table></div></div>
+        </section>
+
+        <section id="view-activity" class="view"><div class="page-title"><div><div class="eyebrow">AUDIT TRAIL</div><h1>Activity log<span class="period">.</span></h1><p>Scans, notifications, new discoveries, and errors.</p></div></div><div class="panel log-panel"><div id="full-activity" class="events"></div></div></section>
+
+        <section id="view-settings" class="view"><div class="page-title"><div><div class="eyebrow">CONFIGURATION</div><h1>Monitor settings<span class="period">.</span></h1><p>Current deployment settings and notification connection.</p></div></div><div class="settings-grid"><div class="panel settings-panel"><div class="tiny-label">MONITOR TARGET</div><h2>ICAI batch monitoring</h2><div class="setting-row"><span>Region</span><strong>Western Region</strong></div><div class="setting-row"><span>POU</span><strong>Nashik</strong></div><div class="setting-row"><span>Courses</span><strong>All available</strong></div><div class="setting-row"><span>Check interval</span><strong id="settings-interval">Every 5 minutes</strong></div><div class="setting-row"><span>Source</span><a href="https://www.icaionlineregistration.org/launchbatchdetail.aspx" target="_blank" rel="noopener noreferrer">ICAI Launch Batch Details ↗</a></div></div><div class="panel settings-panel">
+              <div class="tiny-label">NOTIFICATIONS</div>
+              <h2>Connect @PranjalAlert_bot</h2>
+              <p class="setting-description" id="settings-telegram">Checking Telegram setup...</p>
+              <div class="setting-row"><span>Bot username</span><a href="https://t.me/PranjalAlert_bot" target="_blank" rel="noopener noreferrer">@PranjalAlert_bot ↗</a></div>
+              <div class="setting-row"><span>Bot API token</span><strong id="bot-token-state">Checking...</strong></div>
+              <div class="setting-row"><span>Alert recipient</span><strong id="recipient-state">Not selected</strong></div>
+              <div class="setup-divider"></div>
+              <div class="setup-step"><span class="setup-number">1</span><div><strong>Open the bot and send /start</strong><p>The recipient must message the bot once before it can send alerts.</p></div></div>
+              <a class="outline-button full button-link" href="https://t.me/PranjalAlert_bot" target="_blank" rel="noopener noreferrer">↗ Open @PranjalAlert_bot</a>
+              <div class="setup-step"><span class="setup-number">2</span><div><strong>Find your Telegram Chat ID</strong><p>Click below after sending a message. Select your chat from the results.</p></div></div>
+              <button id="find-chats" class="outline-button full">⌕ Find my Telegram chats</button>
+              <div id="chat-results" class="chat-results" aria-live="polite"></div>
+              <label class="input-label" for="recipient-input">Or enter a numeric Chat ID manually</label>
+              <div class="recipient-form"><input id="recipient-input" placeholder="Example: 123456789" inputmode="numeric" autocomplete="off" aria-label="Telegram chat ID"/><button class="primary-button" id="verify-recipient">Verify & save</button></div>
+              <p class="footnote">A phone number is not necessarily a Telegram Chat ID. We send a test before saving the recipient. Your bot token stays in your hosting platform's secret variables, never in the website source.</p>
+              <button id="settings-test" class="primary-button full">➤ Send another test message</button>
+            </div></div><div class="panel settings-panel notes-panel"><h2>About notifications</h2><p>The first successful scan saves existing batches as a baseline. You are notified only when a previously unseen batch appears. If Telegram temporarily fails, alerts remain queued for retry. No alert means no new batch was detected in a successful check — review the activity log for errors.</p></div></section>
+      </main>
+      <footer class="footer"><span>BatchWatch · Independently built monitoring tool · Not affiliated with ICAI</span><span>Times in IST (Asia/Kolkata)</span></footer>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="demo-banner" class="demo-banner" hidden>DESIGN PREVIEW · Sample data only. Monitoring and Telegram are not connected in this preview.</div>
+  </div>
+</body>
+</html>
