@@ -397,7 +397,7 @@ def capture_batches(diagnostic: bool = False) -> list[dict[str, Any]]:
                 if not match:
                     raise RuntimeError(f"Course option disappeared after page reload: {course['label']}")
                 select_and_settle(page, "course", match)
-                click_search_if_present(page)
+                page.locator("#btn_getlist").click(timeout=20000)
                 rows, valid, result_url = wait_for_batch_results(page, seconds=20)
                 if not valid:
                     DEBUG_DIR.mkdir(parents=True, exist_ok=True)
