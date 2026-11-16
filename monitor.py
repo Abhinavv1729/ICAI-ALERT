@@ -4,7 +4,7 @@
 Checks all course options on the public Launch Batch Details page and sends
 Telegram notifications only for newly discovered batches. First successful
 check records a baseline so existing batches don't trigger false 'new' alerts.
-"""
+""" 
 from __future__ import annotations
 
 import argparse
