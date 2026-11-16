@@ -154,26 +154,92 @@ def get_courses(page: Page) -> list[dict[str, Any]]:
     return non_all or courses
 
 
+def inspect_search_controls(page: Page) -> list[dict[str, str]]:
+    """Return non-secret descriptors of potentially clickable form controls.
+
+    The ICAI form may use image submits or unlabeled ASP.NET controls,
+    which the previous watcher did not inspect.
+    """
+    try:
+        return page.locator('input[type="submit"], input[type="button"], input[type="image"], button, a[role="button"]').evaluate_all(
+            """els => els.filter(e => {
+              const s = getComputedStyle(e);
+              return s.display !== 'none' && s.visibility !== 'hidden' && e.getClientRects().length > 0;
+            }).map(e => ({
+              tag: e.tagName.toLowerCase(), type: (e.type || '').toLowerCase(),
+              id: e.id || '', name: e.name || '',
+              value: (e.value || '').slice(0,80),
+              label: ((e.textContent || '').trim()).slice(0,80),
+              title: (e.title || '').slice(0,80), alt: (e.alt || '').slice(0,80),
+              aria: (e.getAttribute('aria-label') || '').slice(0,80),
+              src: (e.getAttribute('src') || '').split('/').pop().slice(0,80),
+            }))"""
+        )
+    except Exception:
+        return []
+
+
+def search_action_score(action: dict[str, str]) -> int:
+    """Score a form button without clicking navigation/login controls."""
+    label = simplify(' '.join(str(action.get(k, '')) for k in
+                              ('id', 'name', 'value', 'label', 'title', 'alt', 'aria', 'src')))
+    compact = label.replace(' ', '')
+    if (re.search(r"\b(login|logout|register|registration|cancel|reset|sign in|sign out|home|back)\b", label)
+            or any(blocked in compact for blocked in ('login', 'logout', 'register', 'cancel', 'reset', 'signin', 'signout'))):
+        return -100
+    if re.search(r"\b(search|show|view|find|fetch|display|load|go|submit|lookup|batchdetails|btnsearch|btnshow)\b", label):
+        return 100
+    if 'batch' in label and any(word in label for word in ('detail', 'list', 'launch')):
+        return 90
+    if action.get('type') in ('submit','image') and not label:
+        return 10  # common icon-only ASP.NET search button
+    return 0
+
+
 def click_search_if_present(page: Page) -> bool:
-    """Click a visible search/view batch button if the site requires one."""
-    actions = page.locator('input[type="submit"], input[type="button"], button')
+    """Click a batch-search control, including image and icon-only buttons."""
+    selector = 'input[type="submit"], input[type="button"], input[type="image"], button, a[role="button"]'
+    actions = page.locator(selector)
+    descriptors = inspect_search_controls(page)
+    LOG.info("Available visible form actions: %s", json.dumps(descriptors, ensure_ascii=False))
+    candidates: list[tuple[int,int]] = []
     for i in range(actions.count()):
-        control = actions.nth(i)
+        node = actions.nth(i)
         try:
-            if not control.is_visible() or not control.is_enabled():
+            if not node.is_visible() or not node.is_enabled():
                 continue
-            caption = simplify((control.get_attribute("value") or "") + " " +
-                               (control.inner_text(timeout=1000) or ""))
-            if re.search(r"\b(search|show|view|find|submit|get details|batch details)\b", caption) \
-                    and not re.search(r"\b(login|register|sign in|cancel)\b", caption):
-                LOG.info("Clicking search button: %s", caption)
-                control.click(timeout=20000)
-                page.wait_for_timeout(1500)
-                return True
+            info = node.evaluate("""e => ({tag:e.tagName.toLowerCase(), type:(e.type||'').toLowerCase(),
+                id:e.id||'',name:e.name||'',value:(e.value||'').slice(0,80),
+                label:((e.textContent||'').trim()).slice(0,80),
+                title:(e.title||'').slice(0,80),alt:(e.alt||'').slice(0,80),
+                aria:(e.getAttribute('aria-label')||'').slice(0,80),
+                src:(e.getAttribute('src')||'').split('/').pop().slice(0,80)})""")
+            score = search_action_score(info)
+            if score > 0:
+                candidates.append((score,i))
         except Exception:
             continue
-    LOG.info("No search button detected; expecting auto-updating results")
-    return False
+    if not candidates:
+        LOG.warning('No button matching batch/search could be identified; checking for auto-updating results')
+        return False
+    candidates.sort(reverse=True)
+    best_score, best_index = candidates[0]
+    # For ambiguous, icon-only submits, only click when it is the sole candidate.
+    if best_score == 10 and len(candidates) != 1:
+        LOG.warning('Multiple unlabeled submit/image buttons; not guessing which one starts search')
+        return False
+    try:
+        LOG.info('Clicking candidate batch search control (score=%s, index=%s)', best_score, best_index)
+        actions.nth(best_index).click(timeout=15000)
+        try:
+            page.wait_for_load_state('domcontentloaded', timeout=10000)
+        except Exception:
+            pass
+        page.wait_for_timeout(1200)
+        return True
+    except Exception as exc:
+        LOG.warning('Potential batch search control did not click successfully: %s', str(exc)[:160])
+        return False
 
 
 def parse_batch_html(html: str, source_url: str = SITE_URL) -> tuple[list[dict[str, Any]], bool]:
@@ -348,6 +414,13 @@ def capture_batches(diagnostic: bool = False) -> list[dict[str, Any]]:
                     page.screenshot(path=str(DEBUG_DIR / f"unrecognized_{safe_label}.png"), full_page=True)
                     LOG.error("ICAI unrecognized page after selecting %s: %s", course['label'],
                               describe_unrecognized_html(html))
+                    LOG.error("Visible form action details: %s", json.dumps(inspect_search_controls(page)))
+                    try:
+                        selected = page.locator('select').evaluate_all(
+                            "els => els.map(e => ({id:e.id, value:e.value, selected:(e.selectedOptions[0] || {}).textContent || ''}))")
+                        LOG.error("Selected dropdown values at failure: %s", json.dumps(selected))
+                    except Exception:
+                        pass
                     raise RuntimeError(
                         f"Could not recognize a batch results table or a 'no batches' message for {course['label']} "
                         "after waiting 20 seconds. See the logged page summary and /data/debug/ screenshot/HTML. "
