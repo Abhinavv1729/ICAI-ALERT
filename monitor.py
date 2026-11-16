@@ -35,6 +35,9 @@ EMPTY_PATTERNS = (
     "no records to display", "no record to display", "no batch found",
     "no batches found", "no batch available", "no batches available",
     "no result found", "no results found", "no matching records",
+    "no data available", "no data to display", "no data exists",
+    "no batches to display", "no batches to show", "no batch launched",
+    "no batch has been launched", "currently no batches", "batch details not available",
 )
 PLACEHOLDER_PATTERNS = (
     "select", "--select--", "-- select --", "choose", "choose one", "please select",
@@ -239,6 +242,48 @@ def parse_batch_html(html: str, source_url: str = SITE_URL) -> tuple[list[dict[s
     return list(dedup.values()), True
 
 
+
+def wait_for_batch_results(page: Page, seconds: int = 20) -> tuple[list[dict[str, Any]], bool, str]:
+    """Wait for the *result* rather than assuming ASP.NET has settled in 1.2 seconds.
+
+    Some ICAI postbacks fetch the batch results asynchronously. Parse all frames
+    (if the site uses an embedded results grid) but only accept a recognized
+    batch grid or an explicit empty-result message. Unknown pages remain errors.
+    """
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            for frame in page.frames:
+                html = frame.content()
+                batches, recognized = parse_batch_html(html, frame.url or page.url)
+                if recognized:
+                    return batches, True, frame.url or page.url
+        except Exception:
+            pass  # A frame may be navigating during a WebForms update.
+        if time.monotonic() >= deadline:
+            break
+        page.wait_for_timeout(800)
+    return [], False, page.url
+
+
+def describe_unrecognized_html(html: str) -> str:
+    """Report compact, non-secret visible markup hints in logs for debugging."""
+    soup = BeautifulSoup(html, 'html.parser')
+    body = soup.body or soup
+    text = clean(body.get_text(' ', strip=True))
+    tables = []
+    for table in soup.select('table')[:10]:
+        head = []
+        for tr in table.select('tr')[:2]:
+            vals = [clean(c.get_text(' ', strip=True))[:60]
+                    for c in tr.find_all(['td', 'th'], recursive=False)]
+            if vals:
+                head.append(vals[:12])
+        if head:
+            tables.append(head)
+    return json.dumps({'body_tail': text[-1300:], 'tables': tables[:6]}, ensure_ascii=False)
+
+
 def batch_key(course: str, batch: dict[str, Any]) -> str:
     fields = batch["fields"]
     normalized = {simplify(k): clean(v) for k, v in fields.items()}
@@ -287,16 +332,25 @@ def capture_batches(diagnostic: bool = False) -> list[dict[str, Any]]:
                     raise RuntimeError(f"Course option disappeared after page reload: {course['label']}")
                 select_and_settle(page, "course", match)
                 click_search_if_present(page)
-                html = page.content()
-                rows, valid = parse_batch_html(html, page.url)
+                rows, valid, result_url = wait_for_batch_results(page, seconds=20)
                 if not valid:
                     DEBUG_DIR.mkdir(parents=True, exist_ok=True)
                     safe_label = re.sub(r"[^a-z0-9_-]", "_", simplify(course["label"]))[:50]
+                    html = page.content()
                     (DEBUG_DIR / f"unrecognized_{safe_label}.html").write_text(html, encoding="utf-8")
+                    for i, frame in enumerate(page.frames):
+                        if frame == page.main_frame:
+                            continue
+                        try:
+                            (DEBUG_DIR / f"unrecognized_{safe_label}_frame_{i}.html").write_text(frame.content(), encoding="utf-8")
+                        except Exception:
+                            pass
                     page.screenshot(path=str(DEBUG_DIR / f"unrecognized_{safe_label}.png"), full_page=True)
+                    LOG.error("ICAI unrecognized page after selecting %s: %s", course['label'],
+                              describe_unrecognized_html(html))
                     raise RuntimeError(
-                        f"Could not recognize a batch results table or a 'no batches' message for {course['label']}. "
-                        f"Inspect debug/unrecognized_{safe_label}.png / .html and adjust the parser. "
+                        f"Could not recognize a batch results table or a 'no batches' message for {course['label']} "
+                        "after waiting 20 seconds. See the logged page summary and /data/debug/ screenshot/HTML. "
                         "No alerts or state changes were made."
                     )
                 LOG.info("%s: %d batch rows", course["label"], len(rows))
